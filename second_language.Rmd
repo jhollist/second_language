@@ -6,12 +6,18 @@ date: 2017-12-26
 
 Sent tweet to see what twitter #rstats hashtag could rustle up on thoughts of a language to learn, in addition to , R.
 
-# use `twitteR`
+# use `rtweet`
 
 ```{r}
 library(rtweet)
+library(dplyr)
+
+
 create_token("rtweet_second_language", 
              Sys.getenv("second_language_key"),
              Sys.getenv("second_language_secret"))
-x<-search_tweets(q = '"#rstats twitter if you had the time and wanted to learn another language what language would you choose and why?"', include_rts = FALSE)
+original_tweet <- search_tweets(q = '"#rstats twitter if you had the time and wanted to learn another language what language would you choose and why?"', include_rts = TRUE, parse = TRUE)
+recent_mentions <- search_tweets("@jhollist", n = 500, parse = TRUE) 
+all_tweets <- rbind(original_tweet, recent_mentions)
+save(all_tweets, file = "all_tweets.Rda")
 ```
