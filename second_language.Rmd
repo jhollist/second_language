@@ -13,16 +13,34 @@ Sent tweet to see what twitter #rstats hashtag could rustle up on thoughts of a 
 ```{r}
 library(rtweet)
 library(dplyr)
-
-
 create_token("rtweet_second_language", 
              Sys.getenv("second_language_key"),
              Sys.getenv("second_language_secret"))
-original_tweet <- search_tweets(q = '"#rstats twitter if you had the time and wanted to learn another language what language would you choose and why?"', include_rts = TRUE, parse = TRUE) %>%
-  arrange(created_at)
+
+# Get existing tweets
+for(i in list.files(pattern = "all_tweets")){
+  load(i)  
+}
+
+# combine
+x <- dplyr::bind_rows(ls(pattern = "all_tweets"))
+
+#original_tweet <- search_tweets(q = '"#rstats twitter if you had the time and wanted to learn another language what language would you choose and why?"', include_rts = TRUE, parse = TRUE) %>%
+#  arrange(created_at)
 recent_mentions <- search_tweets("@jhollist", n = 500, parse = TRUE) 
-all_tweets <- rbind(original_tweet, recent_mentions)
-save(all_tweets, file = "all_tweets.Rda")
+all_tweets <- rbind(all_tweets, recent_mentions) 
+
+# Clean up dups (list columns seem to be throwing off distinct (and maybe unique))
+# dups result from my inelegant method of saving/reloading tweets...
+all_tweets <- all_tweets[!duplicated(all_tweets$status_id),] %>%
+  arrange(created_at)
+
+# This stuff is to make sure I don't grab tweets after the ~week limit on 
+# Twitters search API and blow away all my saved tweets.  
+# not using a csv because list columns
+assign(paste0("all_tweets_",lubridate::today()), all_tweets)
+save(list = paste0("all_tweets_",lubridate::today()), 
+     file = paste0("all_tweets_",lubridate::today(),".Rda"))
 ```
 
 # Borrowing liberally from Lucy Stats!
@@ -31,10 +49,6 @@ save(all_tweets, file = "all_tweets.Rda")
 library("ggraph")
 library("igraph")
 library("ggiraph")
-
-all_tweets <- all_tweets %>%
-  distinct() %>%
-  arrange(created_at)
 
 id <- original_tweet[1,]$status_id
 diff <- 1
@@ -113,3 +127,11 @@ all_replies %>%
        x = NULL) +
   coord_flip()
 ```
+
+# Categorize tweets
+
+First I wanted to tag each of the tweets with a language (or languages)
+
+```
+languages <- c("r","c++","javascript","python","rust","go","golang","ruby",
+"sql","julia",)
