@@ -10,7 +10,7 @@ Sent tweet to see what twitter #rstats hashtag could rustle up on thoughts of a 
 
 # use `rtweet`
 
-```{r}
+```{r, eval=FALSE}
 library(rtweet)
 library(dplyr)
 create_token("rtweet_second_language", 
@@ -18,29 +18,20 @@ create_token("rtweet_second_language",
              Sys.getenv("second_language_secret"))
 
 # Get existing tweets
-for(i in list.files(pattern = "all_tweets")){
-  load(i)  
-}
-
-# combine
-x <- dplyr::bind_rows(ls(pattern = "all_tweets"))
-
+load("all_tweets.Rda")
 #original_tweet <- search_tweets(q = '"#rstats twitter if you had the time and wanted to learn another language what language would you choose and why?"', include_rts = TRUE, parse = TRUE) %>%
 #  arrange(created_at)
-recent_mentions <- search_tweets("@jhollist", n = 500, parse = TRUE) 
-all_tweets <- rbind(all_tweets, recent_mentions) 
-
-# Clean up dups (list columns seem to be throwing off distinct (and maybe unique))
-# dups result from my inelegant method of saving/reloading tweets...
-all_tweets <- all_tweets[!duplicated(all_tweets$status_id),] %>%
+recent_mentions <- search_tweets("@jhollist", n = 500, parse = TRUE) %>%
+  filter(!status_id %in% all_tweets$status_id)
+all_tweets <- rbind(all_tweets, recent_mentions) %>%
+  unique() %>% 
   arrange(created_at)
 
 # This stuff is to make sure I don't grab tweets after the ~week limit on 
 # Twitters search API and blow away all my saved tweets.  
 # not using a csv because list columns
-assign(paste0("all_tweets_",lubridate::today()), all_tweets)
-save(list = paste0("all_tweets_",lubridate::today()), 
-     file = paste0("all_tweets_",lubridate::today(),".Rda"))
+
+save(all_tweets, file = "all_tweets.Rda")
 ```
 
 # Borrowing liberally from Lucy Stats!
@@ -50,7 +41,10 @@ library("ggraph")
 library("igraph")
 library("ggiraph")
 
-id <- original_tweet[1,]$status_id
+load("all_tweets.Rda")
+
+orig_id <- "945766352119304193"
+id <- orig_id
 diff <- 1
 while (diff != 0) {
 id_next <- all_tweets %>%
@@ -69,7 +63,7 @@ from_text <- all_replies %>%
   left_join(all_replies, c("reply_to_status_id" = "status_id")) %>%
   select(screen_name, text)
 
-tweet_0 <- original_tweet[1,"text"]
+tweet_0 <- all_tweets %>% filter(status_id == orig_id) %>% pull(text)
 
 to_text <- paste0(all_replies$screen_name, ": ", all_replies$text)
 to_text <- gsub("'", "`", to_text)
@@ -128,10 +122,22 @@ all_replies %>%
   coord_flip()
 ```
 
-# Categorize tweets
+# Count languages
 
-First I wanted to tag each of the tweets with a language (or languages)
+```{r}
+
+languages <- c("r","c\\+\\+","c\\/c\\+\\+", "c", "javascript","python","rust","go","golang","ruby",
+"sql","julia", "tensorflow", "swift", "spark", "scratch","sas","rails","perl", "keras","julialang","js","java","julia's","html","hive","haskell","golang","fortran","ethereum","d3","css","c#")
+
+x<-all_replies %>% 
+  mutate(clean_text = gsub("^#","",tolower(text)))
+  
+  
+  unnest_tokens(word, 
+                text) %>% 
+  anti_join(stop_words) %>%
+  count(.$word, sort = TRUE)
+
+
 
 ```
-languages <- c("r","c++","javascript","python","rust","go","golang","ruby",
-"sql","julia",)
