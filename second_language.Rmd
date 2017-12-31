@@ -125,12 +125,42 @@ all_replies %>%
 # Count languages
 
 ```{r}
+library(dplyr)
+library(stringr)
+load("all_tweets.Rda")
+
+orig_id <- "945766352119304193"
+id <- orig_id
+diff <- 1
+while (diff != 0) {
+id_next <- all_tweets %>%
+  filter(reply_to_status_id %in% id) %>%
+  pull(status_id)
+id_new <- unique(c(id, id_next))
+diff <- length(id_new) - length(id)
+id <- id_new
+}
+
+all_replies <- all_tweets %>% 
+  filter(reply_to_status_id %in% id)
 
 languages <- c("r","c\\+\\+","c\\/c\\+\\+", "c", "javascript","python","rust","go","golang","ruby",
 "sql","julia", "tensorflow", "swift", "spark", "scratch","sas","rails","perl", "keras","julialang","js","java","julia's","html","hive","haskell","golang","fortran","ethereum","d3","css","c#")
+languages<- stringr::str_c("\\b",languages, "\\b")
 
-x<-all_replies %>% 
-  mutate(clean_text = gsub("^#","",tolower(text)))
+all_replies<-all_replies %>% 
+  mutate(clean_text = gsub("^#$!$?$.","",tolower(text)))
+
+x<-vector("numeric", length = length(languages))
+for(i in seq_along(languages)){
+x[i]<-all_replies$clean_text %>% 
+  str_match(languages[i]) %>%
+  data.frame(stringsAsFactors = FALSE) %>%
+  mutate(logical = is.na(.) == FALSE) %>%
+  pull(logical) %>%
+  sum()
+}
+
   
   
   unnest_tokens(word, 
