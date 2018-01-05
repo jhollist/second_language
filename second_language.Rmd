@@ -144,29 +144,47 @@ id <- id_new
 all_replies <- all_tweets %>% 
   filter(reply_to_status_id %in% id)
 
-languages <- c("r","c\\+\\+","c\\/c\\+\\+", "c", "javascript","python","rust","go","golang","ruby",
-"sql","julia", "tensorflow", "swift", "spark", "scratch","sas","rails","perl", "keras","julialang","js","java","julia's","html","hive","haskell","golang","fortran","ethereum","d3","css","c#")
-languages<- stringr::str_c("\\b",languages, "\\b")
+languages <- c("c\\+\\+", "c/c\\+\\+", "c\\+\\+17", "c\\+\\+20", "javascript",
+               "python","rust","go","golang","ruby","sql","julia", "tensorflow", 
+               "swift", "spark", "scratch","sas","rails","perl", "keras", 
+               "julialang", "js", "java", "julia's", "html", "hive", "haskell", 
+               "golang", "fortran", "ethereum", "d3", "css", "c#", "sml", 
+               "assembly")
+languages_b<- stringr::str_c("\\b",languages,"|\\b",languages,"\\b|",languages,"\\b")
+languages_simp <- c("c", "c", "c", "c", "javascript",
+               "python","rust","go","go","ruby","sql","julia", "tensorflow", 
+               "swift", "spark", "scratch","sas","rails","perl", "keras", 
+               "julia", "javascript", "java", "julia", "html", "hive", "haskell", 
+               "go", "fortran", "ethereum", "javascript", "css", "c#", "sml", 
+               "assembly")
+
+lang_df <- data_frame(languages,languages_b, languages_simp)
 
 all_replies<-all_replies %>% 
-  mutate(clean_text = gsub("^#$!$?$.","",tolower(text)))
+  mutate(clean_text = str_replace_all(str_to_lower(text),"^#|\\s#|\\.|\\?|!"," ")) 
 
-x<-vector("numeric", length = length(languages))
+
+
+lang_count<-data.frame(languages,
+                       count = vector("numeric", length = length(languages)), 
+                       interactions = vector("numeric", length = length(languages)))
 for(i in seq_along(languages)){
-x[i]<-all_replies$clean_text %>% 
-  str_match(languages[i]) %>%
+lang_count[i,2]<-all_replies$clean_text %>% 
+  str_match(languages_b[i]) %>%
   data.frame(stringsAsFactors = FALSE) %>%
   mutate(logical = is.na(.) == FALSE) %>%
   pull(logical) %>%
   sum()
+
+lang_count[i,3] <- all_replies %>%
+  filter(str_detect(.$clean_text, languages_b[i])) %>%
+  select(favorite_count,retweet_count) %>%
+  sum()
+
 }
 
-  
-  
-  unnest_tokens(word, 
-                text) %>% 
-  anti_join(stop_words) %>%
-  count(.$word, sort = TRUE)
+lang_count %>%
+  arrange(desc(interactions))
 
 
 
