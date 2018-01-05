@@ -165,26 +165,28 @@ all_replies<-all_replies %>%
 
 
 
-lang_count<-data.frame(languages,
+lang_count<-data.frame(language = lang_df$languages_simp,
                        count = vector("numeric", length = length(languages)), 
-                       interactions = vector("numeric", length = length(languages)))
+                       interactions = vector("numeric", 
+                                             length = length(languages)))
 for(i in seq_along(languages)){
 lang_count[i,2]<-all_replies$clean_text %>% 
-  str_match(languages_b[i]) %>%
-  data.frame(stringsAsFactors = FALSE) %>%
-  mutate(logical = is.na(.) == FALSE) %>%
-  pull(logical) %>%
-  sum()
+  str_detect(lang_df$languages_b[i]) %>%
+  sum() # need to do something with which() and unique.
 
 lang_count[i,3] <- all_replies %>%
-  filter(str_detect(.$clean_text, languages_b[i])) %>%
+  filter(str_detect(.$clean_text, lang_df$languages_b[i])) %>%
   select(favorite_count,retweet_count) %>%
   sum()
 
 }
 
+# This is double counting...
+
 lang_count %>%
-  arrange(desc(interactions))
+  group_by(language) %>%
+  summarize(total_interactions = sum(interactions)) %>%
+  arrange(desc(total_interactions))
 
 
 
